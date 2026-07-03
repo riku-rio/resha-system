@@ -35,7 +35,21 @@ module.exports = {
       return;
     }
 
-    if (interaction.isAnySelectMenu()) {
+    if (interaction.isAutocomplete()) {
+      const command = interaction.client.commands.get(interaction.commandName);
+      if (!command?.autocomplete) {
+        return;
+      }
+
+      try {
+        await command.autocomplete(interaction);
+      } catch (error) {
+        console.error(`Autocomplete for ${interaction.commandName} failed:`, error.message);
+      }
+      return;
+    }
+
+    if (interaction.isButton() || interaction.isAnySelectMenu()) {
       const handler = interaction.client.componentHandlers.find((entry) => entry.matches(interaction.customId));
       if (!handler) {
         return;

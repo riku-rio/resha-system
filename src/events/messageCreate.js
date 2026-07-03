@@ -1,12 +1,24 @@
 const { Events } = require("discord.js");
+const prisma = require("../config/database");
 
 module.exports = {
   name: Events.MessageCreate,
   async execute(message) {
     if (message.author.bot) return;
 
+    // ── Auto-reply lookup (runs before all other checks) ──────────────────────
+    const lowerContent = message.content.toLowerCase();
+    const autoReply = await prisma.autoReply.findUnique({
+      where: { triggerMessage: lowerContent },
+    });
+
+    if (autoReply) {
+      await message.channel.send(autoReply.replyContent);
+      return;
+    }
+
     // Check for "hello" (case-insensitive)
-    if (message.content.toLowerCase() === "hello") {
+    if (lowerContent === "hello") {
       await message.reply("Hey");
       return;
     }
@@ -32,3 +44,4 @@ module.exports = {
     }
   },
 };
+
