@@ -3,3 +3,4 @@ package-lock.json
 .env
 
 /src/generated/prisma
+dev.db
