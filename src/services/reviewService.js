@@ -8,7 +8,7 @@ function buildStars(stars) {
 
 async function publishReview(guild, review) {
   const guildId = guild.id;
-  const configWrapper = reviewsDb.getGuildConfig(guildId);
+  const configWrapper = await reviewsDb.getGuildConfig(guildId);
   const config = configWrapper.config || {};
   const channelId = config.reviewsChannel;
 
@@ -40,7 +40,7 @@ async function publishReview(guild, review) {
     .setTimestamp();
 
   if (hasStaff) {
-    const stats = reviewsDb.getAverage(guildId, review.ratedId);
+    const stats = await reviewsDb.getAverage(guildId, review.ratedId);
     embed.setDescription(`📈 **${ratedMember}'s Lifetime Stats:**\nAverage: **${stats.average} / 5** (${stats.count} reviews)`);
   }
 
@@ -56,7 +56,7 @@ async function sendReviewRequest(client, guild, userId, ticketChannelName) {
   let ratedStaffId = "none";
 
   if (ticket) {
-    const ticketInfo = require("../database/ticketDb").getActiveTicket(guild.id, ticket.id);
+    const ticketInfo = await require("../database/ticketDb").getActiveTicket(guild.id, ticket.id);
     if (ticketInfo && ticketInfo.claimedBy) {
       ratedStaffId = ticketInfo.claimedBy;
     }

@@ -1,125 +1,138 @@
-const fs = require("fs");
-const path = require("path");
+const prisma = require("../config/database");
 
-const dbPath = path.resolve(__dirname, "../../data/reviews_db.json");
+/**
+ * Gets (or creates) the review configuration for a guild.
+ * Returns an object matching the old JSON shape:
+ *   { config: { reviewsChannel, reviewRole, minDelaySeconds }, reviews: [...] }
+ */
+async function getGuildConfig(guildId) {
+  const key = guildId || "global";
 
-function ensureDbExists() {
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  let configRow = await prisma.guildReviewConfig.findUnique({ where: { guildId: key } });
+  if (!configRow) {
+    configRow = await prisma.guildReviewConfig.create({
+      data: { guildId: key }
+    });
   }
-  if (!fs.existsSync(dbPath)) {
-    fs.writeFileSync(dbPath, JSON.stringify({}, null, 2), "utf8");
-  }
-}
 
-function readData() {
-  ensureDbExists();
-  try {
-    const content = fs.readFileSync(dbPath, "utf8");
-    return JSON.parse(content || "{}");
-  } catch (error) {
-    console.error("Failed to read reviews database:", error);
-    return {};
-  }
-}
+  const reviews = await prisma.review.findMany({
+    where: { guildId: key },
+    orderBy: { id: "asc" }
+  });
 
-function writeData(data) {
-  ensureDbExists();
-  try {
-    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf8");
-  } catch (error) {
-    console.error("Failed to write to reviews database:", error);
-  }
-}
-
-function getGuildConfig(guildId) {
-  const data = readData();
-  const guildKey = guildId || "global";
-  if (!data[guildKey]) {
-    data[guildKey] = {
-      config: {
-        reviewsChannel: null,
-        reviewRole: null,
-        minDelaySeconds: 0
-      },
-      reviews: []
-    };
-    writeData(data);
-  }
-  // Ensure default structures exist even if the guild key was set in another way
-  if (!data[guildKey].config) {
-    data[guildKey].config = {
-      reviewsChannel: null,
-      reviewRole: null,
-      minDelaySeconds: 0
-    };
-  }
-  if (!data[guildKey].reviews) {
-    data[guildKey].reviews = [];
-  }
-  return data[guildKey];
-}
-
-function saveGuildConfig(guildId, guildConfig) {
-  const data = readData();
-  const guildKey = guildId || "global";
-  data[guildKey] = guildConfig;
-  writeData(data);
-}
-
-function getGuildReviews(guildId) {
-  const config = getGuildConfig(guildId);
-  return config.reviews;
-}
-
-function getReview(guildId, id) {
-  const reviews = getGuildReviews(guildId);
-  return reviews.find((r) => r.id === id) || null;
-}
-
-function createReview(guildId, { raterId, ratedId, stars, comment, ticketChannelName, source }) {
-  const guildConfig = getGuildConfig(guildId);
-  const reviews = guildConfig.reviews;
-  const maxId = reviews.reduce((max, r) => (r.id > max ? r.id : max), 0);
-
-  const newReview = {
-    id: maxId + 1,
-    raterId,
-    ratedId,
-    stars: parseInt(stars, 10),
-    comment: (comment || "").trim(),
-    ticketChannelName: ticketChannelName || null,
-    source: source || "auto", // "auto" or "manual"
-    createdAt: new Date().toISOString()
-  };
-
-  reviews.push(newReview);
-  saveGuildConfig(guildId, guildConfig);
-  return newReview;
-}
-
-function deleteReview(guildId, id) {
-  const guildConfig = getGuildConfig(guildId);
-  const reviews = guildConfig.reviews;
-  const idx = reviews.findIndex((r) => r.id === id);
-  if (idx === -1) return null;
-
-  const [deleted] = reviews.splice(idx, 1);
-  saveGuildConfig(guildId, guildConfig);
-  return deleted;
-}
-
-function getAverage(guildId, ratedId) {
-  const reviews = getGuildReviews(guildId);
-  const memberReviews = reviews.filter((r) => r.ratedId === ratedId);
-  if (memberReviews.length === 0) {
-    return { average: 0, count: 0 };
-  }
-  const sum = memberReviews.reduce((acc, r) => acc + r.stars, 0);
   return {
-    average: parseFloat((sum / memberReviews.length).toFixed(2)),
-    count: memberReviews.length
+    config: {
+      reviewsChannel:  configRow.reviewsChannel  || null,
+      reviewRole:      configRow.reviewRole      || null,
+      minDelaySeconds: configRow.minDelaySeconds || 0
+    },
+    reviews
+  };
+}
+
+/**
+ * Saves the guild-level config (channel, role, minDelay).
+ * NOTE: reviews are saved individually via createReview/deleteReview.
+ * This function also accepts the old shape and handles review bulk-replace
+ * when config.reviews is explicitly set (for reset operations).
+ */
+async function saveGuildConfig(guildId, guildConfig) {
+  const key = guildId || "global";
+  const cfg = guildConfig.config || {};
+
+  await prisma.guildReviewConfig.upsert({
+    where: { guildId: key },
+    update: {
+      reviewsChannel:  cfg.reviewsChannel  || null,
+      reviewRole:      cfg.reviewRole      || null,
+      minDelaySeconds: cfg.minDelaySeconds || 0
+    },
+    create: {
+      guildId: key,
+      reviewsChannel:  cfg.reviewsChannel  || null,
+      reviewRole:      cfg.reviewRole      || null,
+      minDelaySeconds: cfg.minDelaySeconds || 0
+    }
+  });
+
+  // Support bulk review replacement used by reset operations
+  if (Array.isArray(guildConfig.reviews)) {
+    // Get existing IDs and remove any that aren't in the new list
+    const existingIds = (await prisma.review.findMany({
+      where: { guildId: key },
+      select: { id: true }
+    })).map((r) => r.id);
+
+    const keepIds = guildConfig.reviews.map((r) => r.id).filter(Boolean);
+    const toDelete = existingIds.filter((id) => !keepIds.includes(id));
+
+    if (toDelete.length > 0) {
+      await prisma.review.deleteMany({ where: { id: { in: toDelete } } });
+    }
+  }
+}
+
+/**
+ * Gets all reviews for a guild.
+ */
+async function getGuildReviews(guildId) {
+  return prisma.review.findMany({
+    where: { guildId: guildId || "global" },
+    orderBy: { id: "asc" }
+  });
+}
+
+/**
+ * Gets a single review by ID.
+ */
+async function getReview(guildId, id) {
+  return prisma.review.findFirst({
+    where: { id, guildId: guildId || "global" }
+  });
+}
+
+/**
+ * Creates a new review.
+ */
+async function createReview(guildId, { raterId, ratedId, stars, comment, ticketChannelName, source }) {
+  return prisma.review.create({
+    data: {
+      guildId:          guildId || "global",
+      raterId,
+      ratedId,
+      stars:            parseInt(stars, 10),
+      comment:          (comment || "").trim(),
+      ticketChannelName: ticketChannelName || null,
+      source:           source || "auto"
+    }
+  });
+}
+
+/**
+ * Deletes a review by ID.
+ */
+async function deleteReview(guildId, id) {
+  try {
+    return await prisma.review.delete({ where: { id } });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Gets average stats for a specific staff member.
+ */
+async function getAverage(guildId, ratedId) {
+  const reviews = await prisma.review.findMany({
+    where: { guildId: guildId || "global", ratedId }
+  });
+
+  if (reviews.length === 0) return { average: 0, count: 0 };
+
+  const sum = reviews.reduce((acc, r) => acc + r.stars, 0);
+  return {
+    average: parseFloat((sum / reviews.length).toFixed(2)),
+    count: reviews.length
   };
 }
 

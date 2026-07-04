@@ -13,7 +13,7 @@ module.exports = {
       return message.reply("❌ Usage: `!rateview @member`");
     }
 
-    const guildReviews = reviewsDb.getGuildReviews(guildId);
+    const guildReviews = await reviewsDb.getGuildReviews(guildId);
     const memberReviews = guildReviews.filter((r) => r.ratedId === targetMember.id);
     const stats = reviewsDb.getAverage(guildId, targetMember.id);
 

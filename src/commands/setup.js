@@ -8,6 +8,7 @@ const {
   StringSelectMenuBuilder,
   ChannelSelectMenuBuilder,
   RoleSelectMenuBuilder,
+  MessageFlags,
   ChannelType,
   ModalBuilder,
   TextInputBuilder,
@@ -33,7 +34,7 @@ async function execute(interaction) {
   if (!isAdmin(interaction)) {
     await interaction.reply({
       content: "❌ You need the **Administrator** permission to use this command.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -46,7 +47,7 @@ async function execute(interaction) {
   });
 
   const payload = renderMainMenu(guildId);
-  await interaction.reply({ ...payload, ephemeral: true });
+  await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
 }
 
 function renderMainMenu(guildId) {
@@ -76,8 +77,8 @@ function renderMainMenu(guildId) {
   };
 }
 
-function renderReviewsMenu(guildId) {
-  const guildConfig = reviewsDb.getGuildConfig(guildId);
+async function renderReviewsMenu(guildId) {
+  const guildConfig = await reviewsDb.getGuildConfig(guildId);
   const config = guildConfig.config || {};
   const reviews = guildConfig.reviews || [];
 
@@ -129,8 +130,8 @@ function renderReviewsMenu(guildId) {
   };
 }
 
-function renderReviewsList(guildId) {
-  const guildConfig = reviewsDb.getGuildConfig(guildId);
+async function renderReviewsList(guildId) {
+  const guildConfig = await reviewsDb.getGuildConfig(guildId);
   const reviews = guildConfig.reviews || [];
 
   const embed = new EmbedBuilder()
@@ -183,8 +184,8 @@ function renderReviewsList(guildId) {
   };
 }
 
-function renderLogsMenu(guildId) {
-  const config = logsDb.getGuildConfig(guildId);
+async function renderLogsMenu(guildId) {
+  const config = await logsDb.getGuildConfig(guildId);
 
   const statusStr = config.enabled ? "🟢 Enabled" : "🔴 Disabled";
   const autoCreateStr = config.autoCreate ? "🟢 Enabled" : "🔴 Disabled";
@@ -278,15 +279,15 @@ const componentHandlers = [
         const pendingData = pendingRates.get(interaction.message.id);
 
         if (!pendingData) {
-          return interaction.reply({ content: "❌ This rating session has expired or is invalid.", ephemeral: true });
+          return interaction.reply({ content: "❌ This rating session has expired or is invalid.", flags: MessageFlags.Ephemeral });
         }
 
         if (interaction.user.id !== pendingData.raterId) {
-          return interaction.reply({ content: "❌ Only the person who initiated this rating can choose the stars.", ephemeral: true });
+          return interaction.reply({ content: "❌ Only the person who initiated this rating can choose the stars.", flags: MessageFlags.Ephemeral });
         }
 
         // Save review to Database
-        const review = reviewsDb.createReview(guildId, {
+        const review = await reviewsDb.createReview(guildId, {
           raterId: pendingData.raterId,
           ratedId: pendingData.ratedId,
           stars,
@@ -320,7 +321,7 @@ const componentHandlers = [
 
       if (customId.startsWith("rateview:comments:")) {
         const memberId = customId.split(":")[2];
-        const guildConfig = reviewsDb.getGuildConfig(guildId);
+        const guildConfig = await reviewsDb.getGuildConfig(guildId);
         const reviews = guildConfig.reviews || [];
         const memberReviews = reviews.filter((r) => r.ratedId === memberId);
 
@@ -332,7 +333,7 @@ const componentHandlers = [
         const lastReviews = memberReviews.slice(-5).reverse(); // last 5 comments
 
         if (lastReviews.length === 0) {
-          return interaction.reply({ content: "❌ No comments found for this member.", ephemeral: true });
+          return interaction.reply({ content: "❌ No comments found for this member.", flags: MessageFlags.Ephemeral });
         }
 
         let desc = "";
@@ -343,24 +344,24 @@ const componentHandlers = [
         });
 
         embed.setDescription(desc);
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       }
 
       const isConfigInteraction = customId.startsWith("setup:") || customId.startsWith("review:delete:") || customId.startsWith("review:clearall_");
 
       if (isConfigInteraction) {
         if (!isAdmin(interaction)) {
-          return interaction.reply({ content: "❌ You need the **Administrator** permission to use this command.", ephemeral: true });
+          return interaction.reply({ content: "❌ You need the **Administrator** permission to use this command.", flags: MessageFlags.Ephemeral });
         }
       }
 
       if (customId === "setup:section:reviews") {
         sessions.set(userId, { currentSection: "reviews" });
-        return interaction.update(renderReviewsMenu(guildId));
+        return interaction.update(await renderReviewsMenu(guildId));
       }
       if (customId === "setup:section:logs") {
         sessions.set(userId, { currentSection: "logs" });
-        return interaction.update(renderLogsMenu(guildId));
+        return interaction.update(await renderLogsMenu(guildId));
       }
       if (customId === "setup:back") {
         sessions.set(userId, { currentSection: "main" });
@@ -369,22 +370,22 @@ const componentHandlers = [
 
       if (customId === "setup:reviews:channel") {
         const chanId = interaction.values[0];
-        const configWrapper = reviewsDb.getGuildConfig(guildId);
+        const configWrapper = await reviewsDb.getGuildConfig(guildId);
         configWrapper.config.reviewsChannel = chanId;
-        reviewsDb.saveGuildConfig(guildId, configWrapper);
-        return interaction.update(renderReviewsMenu(guildId));
+        await reviewsDb.saveGuildConfig(guildId, configWrapper);
+        return interaction.update(await renderReviewsMenu(guildId));
       }
 
       if (customId === "setup:reviews:role") {
         const roleId = interaction.values[0];
-        const configWrapper = reviewsDb.getGuildConfig(guildId);
+        const configWrapper = await reviewsDb.getGuildConfig(guildId);
         configWrapper.config.reviewRole = roleId;
-        reviewsDb.saveGuildConfig(guildId, configWrapper);
-        return interaction.update(renderReviewsMenu(guildId));
+        await reviewsDb.saveGuildConfig(guildId, configWrapper);
+        return interaction.update(await renderReviewsMenu(guildId));
       }
 
       if (customId === "setup:reviews:list") {
-        return interaction.update(renderReviewsList(guildId));
+        return interaction.update(await renderReviewsList(guildId));
       }
 
       if (customId === "setup:reviews:clearall") {
@@ -400,41 +401,41 @@ const componentHandlers = [
       }
 
       if (customId === "review:clearall_confirm") {
-        const configWrapper = reviewsDb.getGuildConfig(guildId);
+        const configWrapper = await reviewsDb.getGuildConfig(guildId);
         configWrapper.reviews = [];
-        reviewsDb.saveGuildConfig(guildId, configWrapper);
+        await reviewsDb.saveGuildConfig(guildId, configWrapper);
         return interaction.update({ content: "✅ All reviews have been cleared.", embeds: [], components: [] });
       }
 
       if (customId === "review:clearall_deny") {
-        return interaction.update(renderReviewsMenu(guildId));
+        return interaction.update(await renderReviewsMenu(guildId));
       }
 
       if (customId.startsWith("review:delete:")) {
         const id = parseInt(customId.split(":")[2], 10);
-        reviewsDb.deleteReview(guildId, id);
-        return interaction.update(renderReviewsList(guildId));
+        await reviewsDb.deleteReview(guildId, id);
+        return interaction.update(await renderReviewsList(guildId));
       }
 
       if (customId.startsWith("setup:logs:toggle_enabled")) {
-        const config = logsDb.getGuildConfig(guildId);
+        const config = await logsDb.getGuildConfig(guildId);
         config.enabled = !config.enabled;
-        logsDb.saveGuildConfig(guildId, config);
-        return interaction.update(renderLogsMenu(guildId));
+        await logsDb.saveGuildConfig(guildId, config);
+        return interaction.update(await renderLogsMenu(guildId));
       }
 
       if (customId.startsWith("setup:logs:toggle_autocreate")) {
-        const config = logsDb.getGuildConfig(guildId);
+        const config = await logsDb.getGuildConfig(guildId);
         config.autoCreate = !config.autoCreate;
-        logsDb.saveGuildConfig(guildId, config);
-        return interaction.update(renderLogsMenu(guildId));
+        await logsDb.saveGuildConfig(guildId, config);
+        return interaction.update(await renderLogsMenu(guildId));
       }
 
       if (customId.startsWith("setup:logs:select:")) {
         const type = customId.split(":")[3];
         const chanId = interaction.values[0];
-        logsDb.setLogChannel(guildId, type, chanId);
-        return interaction.update(renderLogsMenu(guildId));
+        await logsDb.setLogChannel(guildId, type, chanId);
+        return interaction.update(await renderLogsMenu(guildId));
       }
 
       if (customId === "setup:logs:autocreate_run") {
@@ -471,18 +472,18 @@ const componentHandlers = [
                 parent: category.id
               });
             }
-            logsDb.setLogChannel(guildId, item.type, chan.id);
+            await logsDb.setLogChannel(guildId, item.type, chan.id);
           }
 
-          const config = logsDb.getGuildConfig(guildId);
+          const config = await logsDb.getGuildConfig(guildId);
           config.enabled = true;
           config.autoCreate = true;
-          logsDb.saveGuildConfig(guildId, config);
+          await logsDb.saveGuildConfig(guildId, config);
 
-          await interaction.editReply(renderLogsMenu(guildId));
+          await interaction.editReply(await renderLogsMenu(guildId));
         } catch (err) {
           console.error("Error during auto-create:", err);
-          await interaction.followUp({ content: `❌ Error creating channels: ${err.message}`, ephemeral: true });
+          await interaction.followUp({ content: `❌ Error creating channels: ${err.message}`, flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -512,7 +513,7 @@ const componentHandlers = [
           ]);
 
         const row = new ActionRowBuilder().addComponents(select);
-        return interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+        return interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
       }
 
       // review:stars:<guildId>:<ratedId>:<ticketChannelName>
@@ -559,7 +560,7 @@ const modalHandlers = [
       const comment = interaction.fields.getTextInputValue("review_comment") || "";
 
       // Save to Database
-      const review = reviewsDb.createReview(guildId, {
+      const review = await reviewsDb.createReview(guildId, {
         raterId: interaction.user.id,
         ratedId,
         stars,
@@ -576,7 +577,7 @@ const modalHandlers = [
 
       await interaction.reply({
         content: "💖 Thank you! Your review has been submitted successfully.",
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   }

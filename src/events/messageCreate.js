@@ -9,7 +9,8 @@ module.exports = {
     const lowerContent = message.content.toLowerCase();
     const guildId = message.guild?.id || null;
 
-    const activeTriggers = autoreplyDb.getGuildReplies(guildId).filter((r) => r.enabled);
+    const allReplies = await autoreplyDb.getGuildReplies(guildId);
+    const activeTriggers = allReplies.filter((r) => r.enabled);
 
     let matchedTrigger = null;
     for (const record of activeTriggers) {

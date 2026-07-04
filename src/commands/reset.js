@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 const reviewsDb = require("../database/reviewsDb");
 const ticketDb = require("../database/ticketDb");
 
@@ -52,27 +52,27 @@ module.exports = {
       if (!member && !all) {
         return interaction.reply({
           content: "❌ Please specify either a member to reset, or set `all` to True.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
-      const guildConfig = reviewsDb.getGuildConfig(guildId);
+      const guildConfig = await reviewsDb.getGuildConfig(guildId);
 
       if (all) {
         guildConfig.reviews = [];
-        reviewsDb.saveGuildConfig(guildId, guildConfig);
+        await reviewsDb.saveGuildConfig(guildId, guildConfig);
         return interaction.reply({
           content: "✅ All reviews for this server have been reset.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       if (member) {
         guildConfig.reviews = (guildConfig.reviews || []).filter((r) => r.ratedId !== member.id);
-        reviewsDb.saveGuildConfig(guildId, guildConfig);
+        await reviewsDb.saveGuildConfig(guildId, guildConfig);
         return interaction.reply({
           content: `✅ Reviews for ${member} have been reset.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }
@@ -84,23 +84,23 @@ module.exports = {
       if (!member && !all) {
         return interaction.reply({
           content: "❌ Please specify either a member to reset, or set `all` to True.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       if (all) {
-        ticketDb.resetClaimStats(guildId);
+        await ticketDb.resetClaimStats(guildId);
         return interaction.reply({
           content: "✅ All ticket claims for this server have been reset.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       if (member) {
-        ticketDb.resetClaimStats(guildId, member.id);
+        await ticketDb.resetClaimStats(guildId, member.id);
         return interaction.reply({
           content: `✅ Ticket claims for ${member} have been reset.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }

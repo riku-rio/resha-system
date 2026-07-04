@@ -2,7 +2,7 @@ const { EmbedBuilder } = require("discord.js");
 const logsDb = require("../database/logsDb");
 
 async function getLogChannel(guild, type) {
-  const config = logsDb.getGuildConfig(guild.id);
+  const config = await logsDb.getGuildConfig(guild.id);
   if (!config.enabled) return null;
   const channelId = config.channels?.[type];
   if (!channelId) return null;
