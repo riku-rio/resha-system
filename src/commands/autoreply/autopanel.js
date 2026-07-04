@@ -56,7 +56,7 @@ async function autocomplete(interaction) {
 
   // Edit or Delete — search existing triggers
   const focused = interaction.options.getFocused().toLowerCase();
-  const replies = autoreplyDb.getGuildReplies(interaction.guildId);
+  const replies = await autoreplyDb.getGuildReplies(interaction.guildId);
 
   const filtered = replies
     .filter((r) => r.triggerMessage.toLowerCase().includes(focused))
@@ -75,8 +75,8 @@ async function autocomplete(interaction) {
 }
 
 
-function buildControlPanelMessage(guildId, recordId) {
-  const record = autoreplyDb.getAutoReply(guildId, recordId);
+async function buildControlPanelMessage(guildId, recordId) {
+  const record = await autoreplyDb.getAutoReply(guildId, recordId);
   if (!record) {
     return { content: "❌ Auto-reply configuration not found.", embeds: [], components: [] };
   }
@@ -189,7 +189,7 @@ async function execute(interaction) {
 
   // ── LIST ───────────────────────────────────────────────────────────────────
   if (action === "List") {
-    const replies = autoreplyDb.getGuildReplies(interaction.guildId);
+    const replies = await autoreplyDb.getGuildReplies(interaction.guildId);
     if (replies.length === 0) {
       await interaction.reply({
         content: "ℹ️ There are no auto-reply triggers configured in this server.",
@@ -271,7 +271,7 @@ async function execute(interaction) {
     return;
   }
 
-  const record = autoreplyDb.getAutoReply(interaction.guildId, recordId);
+  const record = await autoreplyDb.getAutoReply(interaction.guildId, recordId);
   if (!record) {
     await interaction.reply({
       content: "❌ That auto-reply no longer exists.",
@@ -282,7 +282,7 @@ async function execute(interaction) {
 
   // ── EDIT ───────────────────────────────────────────────────────────────────
   if (action === "Edit") {
-    const panel = buildControlPanelMessage(interaction.guildId, record.id);
+    const panel = await buildControlPanelMessage(interaction.guildId, record.id);
     await interaction.reply({
       ...panel,
       flags: MessageFlags.Ephemeral,
@@ -331,7 +331,7 @@ const componentHandlers = [
       }
 
       const id = parseInt(interaction.customId.split(":")[2], 10);
-      const deleted = autoreplyDb.deleteAutoReply(interaction.guildId, id);
+      const deleted = await autoreplyDb.deleteAutoReply(interaction.guildId, id);
 
       if (deleted) {
         await interaction.update({
@@ -371,10 +371,10 @@ const componentHandlers = [
         return;
       }
       const id = parseInt(interaction.customId.split(":")[3], 10);
-      const record = autoreplyDb.getAutoReply(interaction.guildId, id);
+      const record = await autoreplyDb.getAutoReply(interaction.guildId, id);
       if (record) {
-        autoreplyDb.updateAutoReply(interaction.guildId, id, { enabled: !record.enabled });
-        const panel = buildControlPanelMessage(interaction.guildId, id);
+        await autoreplyDb.updateAutoReply(interaction.guildId, id, { enabled: !record.enabled });
+        const panel = await buildControlPanelMessage(interaction.guildId, id);
         await interaction.update(panel);
       }
     }
@@ -391,11 +391,11 @@ const componentHandlers = [
         return;
       }
       const id = parseInt(interaction.customId.split(":")[3], 10);
-      const record = autoreplyDb.getAutoReply(interaction.guildId, id);
+      const record = await autoreplyDb.getAutoReply(interaction.guildId, id);
       if (record) {
         const nextMatch = record.matchType === "exact" ? "contains" : "exact";
-        autoreplyDb.updateAutoReply(interaction.guildId, id, { matchType: nextMatch });
-        const panel = buildControlPanelMessage(interaction.guildId, id);
+        await autoreplyDb.updateAutoReply(interaction.guildId, id, { matchType: nextMatch });
+        const panel = await buildControlPanelMessage(interaction.guildId, id);
         await interaction.update(panel);
       }
     }
@@ -412,11 +412,11 @@ const componentHandlers = [
         return;
       }
       const id = parseInt(interaction.customId.split(":")[3], 10);
-      const record = autoreplyDb.getAutoReply(interaction.guildId, id);
+      const record = await autoreplyDb.getAutoReply(interaction.guildId, id);
       if (record) {
         const nextType = record.replyType === "embed" ? "message" : "embed";
-        autoreplyDb.updateAutoReply(interaction.guildId, id, { replyType: nextType });
-        const panel = buildControlPanelMessage(interaction.guildId, id);
+        await autoreplyDb.updateAutoReply(interaction.guildId, id, { replyType: nextType });
+        const panel = await buildControlPanelMessage(interaction.guildId, id);
         await interaction.update(panel);
       }
     }
@@ -433,10 +433,10 @@ const componentHandlers = [
         return;
       }
       const id = parseInt(interaction.customId.split(":")[4], 10);
-      const record = autoreplyDb.getAutoReply(interaction.guildId, id);
+      const record = await autoreplyDb.getAutoReply(interaction.guildId, id);
       if (record) {
-        autoreplyDb.updateAutoReply(interaction.guildId, id, { replyToSender: !record.replyToSender });
-        const panel = buildControlPanelMessage(interaction.guildId, id);
+        await autoreplyDb.updateAutoReply(interaction.guildId, id, { replyToSender: !record.replyToSender });
+        const panel = await buildControlPanelMessage(interaction.guildId, id);
         await interaction.update(panel);
       }
     }
@@ -453,7 +453,7 @@ const componentHandlers = [
         return;
       }
       const id = parseInt(interaction.customId.split(":")[3], 10);
-      const record = autoreplyDb.getAutoReply(interaction.guildId, id);
+      const record = await autoreplyDb.getAutoReply(interaction.guildId, id);
       if (!record) return;
 
       const modal = new ModalBuilder()
@@ -520,9 +520,9 @@ const componentHandlers = [
 
       // values holds selected IDs (comma-separated string list)
       const valuesStr = interaction.values.join(",");
-      autoreplyDb.updateAutoReply(interaction.guildId, id, { [field]: valuesStr });
+      await autoreplyDb.updateAutoReply(interaction.guildId, id, { [field]: valuesStr });
 
-      const panel = buildControlPanelMessage(interaction.guildId, id);
+      const panel = await buildControlPanelMessage(interaction.guildId, id);
       await interaction.update(panel);
     }
   }
@@ -547,7 +547,7 @@ const modalHandlers = [
         .trim();
 
       // Check duplicate within guild
-      const replies = autoreplyDb.getGuildReplies(interaction.guildId);
+      const replies = await autoreplyDb.getGuildReplies(interaction.guildId);
       const existing = replies.find((r) => r.triggerMessage === triggerMessage);
 
       if (existing) {
@@ -558,8 +558,8 @@ const modalHandlers = [
         return;
       }
 
-      const record = autoreplyDb.createAutoReply(interaction.guildId, { triggerMessage, replyContent });
-      const panel = buildControlPanelMessage(interaction.guildId, record.id);
+      const record = await autoreplyDb.createAutoReply(interaction.guildId, { triggerMessage, replyContent });
+      const panel = await buildControlPanelMessage(interaction.guildId, record.id);
 
       await interaction.reply({
         content: `✅ Auto-reply created! Configure detailed options below:`,
@@ -603,7 +603,7 @@ const modalHandlers = [
         return;
       }
 
-      const replies = autoreplyDb.getGuildReplies(interaction.guildId);
+      const replies = await autoreplyDb.getGuildReplies(interaction.guildId);
       const collision = replies.find((r) => r.triggerMessage === triggerMessage && r.id !== id);
 
       if (collision) {
@@ -614,14 +614,14 @@ const modalHandlers = [
         return;
       }
 
-      autoreplyDb.updateAutoReply(interaction.guildId, id, {
+      await autoreplyDb.updateAutoReply(interaction.guildId, id, {
         triggerMessage,
         replyContent,
         embedTitle,
         embedColor
       });
 
-      const panel = buildControlPanelMessage(interaction.guildId, id);
+      const panel = await buildControlPanelMessage(interaction.guildId, id);
       await interaction.update(panel);
     },
   },

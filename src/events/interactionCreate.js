@@ -1,15 +1,16 @@
-const { Events } = require("discord.js");
+const { Events, MessageFlags } = require("discord.js");
 
 async function runHandler(interaction, label, handler) {
   try {
     await handler();
   } catch (error) {
     console.error(`${label} failed:`, error.message);
+    if (!interaction.isRepliable()) return;
     const content = "An error occurred while executing this interaction.";
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content, ephemeral: true });
+      await interaction.reply({ content, flags: MessageFlags.Ephemeral });
     } else {
-      await interaction.followUp({ content, ephemeral: true });
+      await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
     }
   }
 }
@@ -23,9 +24,9 @@ module.exports = {
         if (!command) {
           const content = "Unknown command.";
           if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content, ephemeral: true });
+            await interaction.reply({ content, flags: MessageFlags.Ephemeral });
           } else {
-            await interaction.followUp({ content, ephemeral: true });
+            await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
           }
           return;
         }

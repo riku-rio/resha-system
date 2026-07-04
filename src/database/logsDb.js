@@ -1,91 +1,102 @@
-const fs = require("fs");
-const path = require("path");
+const prisma = require("../config/database");
 
-const dbPath = path.resolve(__dirname, "../../data/logs_db.json");
+const CHANNEL_TYPES = ["messageDelete", "messageEdit", "memberJoin", "memberLeave", "ticket"];
 
-function ensureDbExists() {
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+// Maps channel type string to Prisma field name
+const CHANNEL_FIELD_MAP = {
+  messageDelete: "channelMessageDelete",
+  messageEdit:   "channelMessageEdit",
+  memberJoin:    "channelMemberJoin",
+  memberLeave:   "channelMemberLeave",
+  ticket:        "channelTicket"
+};
+
+/**
+ * Gets (or creates) the logging config for a guild.
+ * Returns an object matching the old JSON shape.
+ */
+async function getGuildConfig(guildId) {
+  const key = guildId || "global";
+  let row = await prisma.guildLogConfig.findUnique({ where: { guildId: key } });
+
+  if (!row) {
+    row = await prisma.guildLogConfig.create({
+      data: { guildId: key }
+    });
   }
-  if (!fs.existsSync(dbPath)) {
-    fs.writeFileSync(dbPath, JSON.stringify({}, null, 2), "utf8");
-  }
+
+  return {
+    enabled: row.enabled,
+    autoCreate: row.autoCreate,
+    channels: {
+      messageDelete: row.channelMessageDelete || null,
+      messageEdit:   row.channelMessageEdit   || null,
+      memberJoin:    row.channelMemberJoin     || null,
+      memberLeave:   row.channelMemberLeave    || null,
+      ticket:        row.channelTicket         || null
+    }
+  };
 }
 
-function readData() {
-  ensureDbExists();
-  try {
-    const content = fs.readFileSync(dbPath, "utf8");
-    return JSON.parse(content || "{}");
-  } catch (error) {
-    console.error("Failed to read logs database:", error);
-    return {};
-  }
+/**
+ * Saves the logging config for a guild.
+ * Accepts the same shape as returned by getGuildConfig.
+ */
+async function saveGuildConfig(guildId, config) {
+  const key = guildId || "global";
+  const ch = config.channels || {};
+  await prisma.guildLogConfig.upsert({
+    where: { guildId: key },
+    update: {
+      enabled:             config.enabled    ?? false,
+      autoCreate:          config.autoCreate ?? false,
+      channelMessageDelete: ch.messageDelete ?? null,
+      channelMessageEdit:   ch.messageEdit   ?? null,
+      channelMemberJoin:    ch.memberJoin    ?? null,
+      channelMemberLeave:   ch.memberLeave   ?? null,
+      channelTicket:        ch.ticket        ?? null
+    },
+    create: {
+      guildId: key,
+      enabled:             config.enabled    ?? false,
+      autoCreate:          config.autoCreate ?? false,
+      channelMessageDelete: ch.messageDelete ?? null,
+      channelMessageEdit:   ch.messageEdit   ?? null,
+      channelMemberJoin:    ch.memberJoin    ?? null,
+      channelMemberLeave:   ch.memberLeave   ?? null,
+      channelTicket:        ch.ticket        ?? null
+    }
+  });
 }
 
-function writeData(data) {
-  ensureDbExists();
-  try {
-    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf8");
-  } catch (error) {
-    console.error("Failed to write to logs database:", error);
-  }
+/**
+ * Sets a specific log channel type.
+ * @param {string} guildId
+ * @param {string} type - one of: messageDelete, messageEdit, memberJoin, memberLeave, ticket
+ * @param {string} channelId
+ */
+async function setLogChannel(guildId, type, channelId) {
+  const key = guildId || "global";
+  const field = CHANNEL_FIELD_MAP[type];
+  if (!field) return;
+
+  await prisma.guildLogConfig.upsert({
+    where: { guildId: key },
+    update: { [field]: channelId },
+    create: { guildId: key, [field]: channelId }
+  });
 }
 
-function getGuildConfig(guildId) {
-  const data = readData();
-  const guildKey = guildId || "global";
-  if (!data[guildKey]) {
-    data[guildKey] = {
-      enabled: false,
-      autoCreate: false,
-      channels: {
-        messageDelete: null,
-        messageEdit: null,
-        memberJoin: null,
-        memberLeave: null,
-        ticket: null
-      }
-    };
-    writeData(data);
-  }
-  
-  if (data[guildKey].enabled === undefined) data[guildKey].enabled = false;
-  if (data[guildKey].autoCreate === undefined) data[guildKey].autoCreate = false;
-  if (!data[guildKey].channels) {
-    data[guildKey].channels = {
-      messageDelete: null,
-      messageEdit: null,
-      memberJoin: null,
-      memberLeave: null,
-      ticket: null
-    };
-  }
-  if (data[guildKey].channels.ticket === undefined) {
-    data[guildKey].channels.ticket = null;
-  }
-  return data[guildKey];
-}
-
-function saveGuildConfig(guildId, config) {
-  const data = readData();
-  const guildKey = guildId || "global";
-  data[guildKey] = config;
-  writeData(data);
-}
-
-function setLogChannel(guildId, type, channelId) {
-  const config = getGuildConfig(guildId);
-  config.channels = config.channels || {};
-  config.channels[type] = channelId;
-  saveGuildConfig(guildId, config);
-}
-
-function setAutoCreate(guildId, bool) {
-  const config = getGuildConfig(guildId);
-  config.autoCreate = bool;
-  saveGuildConfig(guildId, config);
+/**
+ * Toggles the autoCreate flag.
+ */
+async function setAutoCreate(guildId, bool) {
+  const key = guildId || "global";
+  await prisma.guildLogConfig.upsert({
+    where: { guildId: key },
+    update: { autoCreate: bool },
+    create: { guildId: key, autoCreate: bool }
+  });
 }
 
 module.exports = {

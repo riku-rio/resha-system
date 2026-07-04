@@ -12,6 +12,7 @@ const {
   TextInputBuilder,
   TextInputStyle,
   AttachmentBuilder,
+  MessageFlags,
 } = require("discord.js");
 const db = require("../database/ticketDb");
 const reviewService = require("../services/reviewService");
@@ -36,7 +37,7 @@ async function execute(interaction) {
   if (!isAdmin(interaction)) {
     await interaction.reply({
       content: "❌ You need the **Administrator** permission to use this command.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -51,12 +52,12 @@ async function execute(interaction) {
     editingInBtnId: null
   });
 
-  const payload = renderMainMenu(guildId);
-  await interaction.reply({ ...payload, ephemeral: true });
+  const payload = await renderMainMenu(guildId);
+  await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
 }
 
-function renderMainMenu(guildId) {
-  const config = db.getGuildConfig(guildId);
+async function renderMainMenu(guildId) {
+  const config = await db.getGuildConfig(guildId);
 
   const embed = new EmbedBuilder()
     .setTitle("🎫 Ticket Control Panel")
@@ -99,8 +100,8 @@ function renderMainMenu(guildId) {
   };
 }
 
-function renderManageButtonsMenu(guildId, userId) {
-  const config = db.getGuildConfig(guildId);
+async function renderManageButtonsMenu(guildId, userId) {
+  const config = await db.getGuildConfig(guildId);
 
   const embed = new EmbedBuilder()
     .setTitle("🎫 Button Management")
@@ -162,12 +163,12 @@ function renderManageButtonsMenu(guildId, userId) {
   };
 }
 
-function renderButtonConfigMenu(guildId, userId, buttonId) {
-  const config = db.getGuildConfig(guildId);
+async function renderButtonConfigMenu(guildId, userId, buttonId) {
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === buttonId);
 
   if (!button) {
-    return renderManageButtonsMenu(guildId, userId);
+    return await renderManageButtonsMenu(guildId, userId);
   }
 
   const embed = new EmbedBuilder()
@@ -215,18 +216,18 @@ function renderButtonConfigMenu(guildId, userId, buttonId) {
   };
 }
 
-function renderQuestionsMenu(guildId, userId, buttonId, isOption = false, optionId = null) {
-  const config = db.getGuildConfig(guildId);
+async function renderQuestionsMenu(guildId, userId, buttonId, isOption = false, optionId = null) {
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === buttonId);
 
-  if (!button) return renderMainMenu(guildId);
+  if (!button) return await renderMainMenu(guildId);
 
   let questions = [];
   let name = "";
 
   if (isOption) {
     const option = button.hiddenSelectMenu?.options?.find((o) => o.id === optionId);
-    if (!option) return renderMainMenu(guildId);
+    if (!option) return await renderMainMenu(guildId);
     questions = option.questions || [];
     name = `Option: ${option.label}`;
   } else {
@@ -288,8 +289,8 @@ function renderQuestionsMenu(guildId, userId, buttonId, isOption = false, option
   };
 }
 
-function renderManageSelectMenusMenu(guildId, userId) {
-  const config = db.getGuildConfig(guildId);
+async function renderManageSelectMenusMenu(guildId, userId) {
+  const config = await db.getGuildConfig(guildId);
 
   const embed = new EmbedBuilder()
     .setTitle("📋 Manage Select Menus")
@@ -327,11 +328,11 @@ function renderManageSelectMenusMenu(guildId, userId) {
   };
 }
 
-function renderSelectMenuConfigMenu(guildId, userId, buttonId) {
-  const config = db.getGuildConfig(guildId);
+async function renderSelectMenuConfigMenu(guildId, userId, buttonId) {
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === buttonId);
 
-  if (!button) return renderManageSelectMenusMenu(guildId, userId);
+  if (!button) return await renderManageSelectMenusMenu(guildId, userId);
 
   const optMenu = button.hiddenSelectMenu || { enabled: false, options: [] };
 
@@ -402,12 +403,12 @@ function renderSelectMenuConfigMenu(guildId, userId, buttonId) {
   };
 }
 
-function renderSelectOptionConfigMenu(guildId, userId, buttonId, optionId) {
-  const config = db.getGuildConfig(guildId);
+async function renderSelectOptionConfigMenu(guildId, userId, buttonId, optionId) {
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === buttonId);
   const option = button?.hiddenSelectMenu?.options?.find((o) => o.id === optionId);
 
-  if (!option) return renderSelectMenuConfigMenu(guildId, userId, buttonId);
+  if (!option) return await renderSelectMenuConfigMenu(guildId, userId, buttonId);
 
   const embed = new EmbedBuilder()
     .setTitle(`📋 Option: ${option.label}`)
@@ -434,8 +435,8 @@ function renderSelectOptionConfigMenu(guildId, userId, buttonId, optionId) {
   };
 }
 
-function renderEmbedSettingsMenu(guildId) {
-  const config = db.getGuildConfig(guildId);
+async function renderEmbedSettingsMenu(guildId) {
+  const config = await db.getGuildConfig(guildId);
   const emb = config.embedSettings;
 
   const embed = new EmbedBuilder()
@@ -463,8 +464,8 @@ function renderEmbedSettingsMenu(guildId) {
   };
 }
 
-function renderTicketMessagesMenu(guildId, userId) {
-  const config = db.getGuildConfig(guildId);
+async function renderTicketMessagesMenu(guildId, userId) {
+  const config = await db.getGuildConfig(guildId);
 
   const embed = new EmbedBuilder()
     .setTitle("💬 Ticket Messages Settings")
@@ -502,11 +503,11 @@ function renderTicketMessagesMenu(guildId, userId) {
   };
 }
 
-function renderButtonTicketMessagesMenu(guildId, userId, buttonId) {
-  const config = db.getGuildConfig(guildId);
+async function renderButtonTicketMessagesMenu(guildId, userId, buttonId) {
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === buttonId);
 
-  if (!button) return renderTicketMessagesMenu(guildId, userId);
+  if (!button) return await renderTicketMessagesMenu(guildId, userId);
 
   const msgConfig = config.ticketMessages[buttonId] || {
     welcomeMessage: "Welcome to your ticket! A staff member will be with you shortly.",
@@ -555,10 +556,10 @@ function renderButtonTicketMessagesMenu(guildId, userId, buttonId) {
   };
 }
 
-function renderInTicketButtonsMenu(guildId, userId, buttonId) {
-  const config = db.getGuildConfig(guildId);
+async function renderInTicketButtonsMenu(guildId, userId, buttonId) {
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === buttonId);
-  if (!button) return renderTicketMessagesMenu(guildId, userId);
+  if (!button) return await renderTicketMessagesMenu(guildId, userId);
 
   const msgConfig = config.ticketMessages[buttonId] || {};
   const insideButtons = msgConfig.insideButtons || [];
@@ -621,13 +622,13 @@ function renderInTicketButtonsMenu(guildId, userId, buttonId) {
   };
 }
 
-function renderInTicketButtonConfigMenu(guildId, userId, buttonId, inBtnId) {
-  const config = db.getGuildConfig(guildId);
+async function renderInTicketButtonConfigMenu(guildId, userId, buttonId, inBtnId) {
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === buttonId);
   const msgConfig = config.ticketMessages[buttonId] || {};
   const insideBtn = msgConfig.insideButtons?.find((b) => b.id === inBtnId);
 
-  if (!insideBtn) return renderInTicketButtonsMenu(guildId, userId, buttonId);
+  if (!insideBtn) return await renderInTicketButtonsMenu(guildId, userId, buttonId);
 
   const embed = new EmbedBuilder()
     .setTitle(`🔘 Button Config: ${insideBtn.label}`)
@@ -689,8 +690,8 @@ function renderInTicketButtonConfigMenu(guildId, userId, buttonId, inBtnId) {
   };
 }
 
-function renderGeneralSettingsMenu(guildId) {
-  const config = db.getGuildConfig(guildId);
+async function renderGeneralSettingsMenu(guildId) {
+  const config = await db.getGuildConfig(guildId);
   const gen = config.general;
 
   const embed = new EmbedBuilder()
@@ -730,8 +731,8 @@ function renderGeneralSettingsMenu(guildId) {
   };
 }
 
-function renderSendPanelMenu(guildId) {
-  const config = db.getGuildConfig(guildId);
+async function renderSendPanelMenu(guildId) {
+  const config = await db.getGuildConfig(guildId);
 
   const embed = new EmbedBuilder()
     .setTitle("📤 Send Ticket Panel")
@@ -783,7 +784,7 @@ const componentHandlers = [
         if (!isAdmin(interaction)) {
           await interaction.reply({
             content: "❌ You don't have permission to modify configurations.",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
           return;
         }
@@ -794,17 +795,17 @@ const componentHandlers = [
         let payload;
 
         if (section === "buttons") {
-          payload = renderManageButtonsMenu(guildId, userId);
+          payload = await renderManageButtonsMenu(guildId, userId);
         } else if (section === "select_menus") {
-          payload = renderManageSelectMenusMenu(guildId, userId);
+          payload = await renderManageSelectMenusMenu(guildId, userId);
         } else if (section === "embed") {
-          payload = renderEmbedSettingsMenu(guildId);
+          payload = await renderEmbedSettingsMenu(guildId);
         } else if (section === "ticket_messages") {
-          payload = renderTicketMessagesMenu(guildId, userId);
+          payload = await renderTicketMessagesMenu(guildId, userId);
         } else if (section === "general") {
-          payload = renderGeneralSettingsMenu(guildId);
+          payload = await renderGeneralSettingsMenu(guildId);
         } else if (section === "send") {
-          payload = renderSendPanelMenu(guildId);
+          payload = await renderSendPanelMenu(guildId);
         }
 
         await interaction.update(payload);
@@ -812,22 +813,22 @@ const componentHandlers = [
       }
 
       if (customId === "ticketpanel:back_to_main") {
-        await interaction.update(renderMainMenu(guildId));
+        await interaction.update(await renderMainMenu(guildId));
         return;
       }
 
       if (customId === "ticketpanel:section:buttons") {
-        await interaction.update(renderManageButtonsMenu(guildId, userId));
+        await interaction.update(await renderManageButtonsMenu(guildId, userId));
         return;
       }
 
       if (customId === "ticketpanel:section:select_menus") {
-        await interaction.update(renderManageSelectMenusMenu(guildId, userId));
+        await interaction.update(await renderManageSelectMenusMenu(guildId, userId));
         return;
       }
 
       if (customId === "ticketpanel:section:ticket_messages") {
-        await interaction.update(renderTicketMessagesMenu(guildId, userId));
+        await interaction.update(await renderTicketMessagesMenu(guildId, userId));
         return;
       }
 
@@ -861,42 +862,42 @@ const componentHandlers = [
 
       if (customId === "ticketpanel:btn_configure_select") {
         const buttonId = interaction.values[0];
-        await interaction.update(renderButtonConfigMenu(guildId, userId, buttonId));
+        await interaction.update(await renderButtonConfigMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:btn_conf:")) {
         const buttonId = customId.split(":")[2];
-        await interaction.update(renderButtonConfigMenu(guildId, userId, buttonId));
+        await interaction.update(await renderButtonConfigMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId === "ticketpanel:btn_remove_select") {
         const buttonId = interaction.values[0];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.buttons = config.buttons.filter((b) => b.id !== buttonId);
 
         delete config.ticketMessages[buttonId];
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
-        await interaction.update(renderManageButtonsMenu(guildId, userId));
+        await interaction.update(await renderManageButtonsMenu(guildId, userId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:btn_delete:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.buttons = config.buttons.filter((b) => b.id !== buttonId);
         delete config.ticketMessages[buttonId];
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
-        await interaction.update(renderManageButtonsMenu(guildId, userId));
+        await interaction.update(await renderManageButtonsMenu(guildId, userId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:btn_edit_basic:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (!button) return;
@@ -929,7 +930,7 @@ const componentHandlers = [
 
       if (customId.startsWith("ticketpanel:btn_edit_cond:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (!button) return;
@@ -956,7 +957,7 @@ const componentHandlers = [
 
       if (customId.startsWith("ticketpanel:btn_edit_support:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (!button) return;
@@ -977,36 +978,36 @@ const componentHandlers = [
 
       if (customId.startsWith("ticketpanel:btn_toggle_select:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button) {
           button.hiddenSelectMenu = button.hiddenSelectMenu || { enabled: false, options: [] };
           button.hiddenSelectMenu.enabled = !button.hiddenSelectMenu.enabled;
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
-        await interaction.update(renderButtonConfigMenu(guildId, userId, buttonId));
+        await interaction.update(await renderButtonConfigMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:btn_toggle_confirm:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button) {
           button.confirmBeforeOpen = !button.confirmBeforeOpen;
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
-        await interaction.update(renderButtonConfigMenu(guildId, userId, buttonId));
+        await interaction.update(await renderButtonConfigMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:btn_questions_menu:")) {
         const buttonId = customId.split(":")[2];
-        await interaction.update(renderQuestionsMenu(guildId, userId, buttonId));
+        await interaction.update(await renderQuestionsMenu(guildId, userId, buttonId));
         return;
       }
 
@@ -1035,42 +1036,42 @@ const componentHandlers = [
       if (customId.startsWith("ticketpanel:q_remove_select:")) {
         const buttonId = customId.split(":")[2];
         const idx = parseInt(interaction.values[0], 10);
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button && button.questions) {
           button.questions.splice(idx, 1);
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
-        await interaction.update(renderQuestionsMenu(guildId, userId, buttonId));
+        await interaction.update(await renderQuestionsMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId === "ticketpanel:sel_btn_select") {
         const buttonId = interaction.values[0];
-        await interaction.update(renderSelectMenuConfigMenu(guildId, userId, buttonId));
+        await interaction.update(await renderSelectMenuConfigMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:sel_menu_config:")) {
         const buttonId = customId.split(":")[2];
-        await interaction.update(renderSelectMenuConfigMenu(guildId, userId, buttonId));
+        await interaction.update(await renderSelectMenuConfigMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:sel_toggle_enable:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button) {
           button.hiddenSelectMenu = button.hiddenSelectMenu || { enabled: false, options: [] };
           button.hiddenSelectMenu.enabled = !button.hiddenSelectMenu.enabled;
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
-        await interaction.update(renderSelectMenuConfigMenu(guildId, userId, buttonId));
+        await interaction.update(await renderSelectMenuConfigMenu(guildId, userId, buttonId));
         return;
       }
 
@@ -1102,7 +1103,7 @@ const componentHandlers = [
       if (customId.startsWith("ticketpanel:sel_edit_opt_select:")) {
         const buttonId = customId.split(":")[2];
         const optionId = interaction.values[0];
-        await interaction.update(renderSelectOptionConfigMenu(guildId, userId, buttonId, optionId));
+        await interaction.update(await renderSelectOptionConfigMenu(guildId, userId, buttonId, optionId));
         return;
       }
 
@@ -1110,7 +1111,7 @@ const componentHandlers = [
         const parts = customId.split(":");
         const buttonId = parts[2];
         const optionId = parts[3];
-        await interaction.update(renderSelectOptionConfigMenu(guildId, userId, buttonId, optionId));
+        await interaction.update(await renderSelectOptionConfigMenu(guildId, userId, buttonId, optionId));
         return;
       }
 
@@ -1118,7 +1119,7 @@ const componentHandlers = [
         const parts = customId.split(":");
         const buttonId = parts[2];
         const optionId = parts[3];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
         const option = button?.hiddenSelectMenu?.options?.find((o) => o.id === optionId);
 
@@ -1150,15 +1151,15 @@ const componentHandlers = [
       if (customId.startsWith("ticketpanel:sel_remove_opt_select:")) {
         const buttonId = customId.split(":")[2];
         const optionId = interaction.values[0];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button && button.hiddenSelectMenu) {
           button.hiddenSelectMenu.options = button.hiddenSelectMenu.options.filter((o) => o.id !== optionId);
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
-        await interaction.update(renderSelectMenuConfigMenu(guildId, userId, buttonId));
+        await interaction.update(await renderSelectMenuConfigMenu(guildId, userId, buttonId));
         return;
       }
 
@@ -1166,7 +1167,7 @@ const componentHandlers = [
 
         const buttonId = customId.split(":")[2];
         const optionId = interaction.values[0];
-        await interaction.update(renderQuestionsMenu(guildId, userId, buttonId, true, optionId));
+        await interaction.update(await renderQuestionsMenu(guildId, userId, buttonId, true, optionId));
         return;
       }
 
@@ -1174,7 +1175,7 @@ const componentHandlers = [
         const parts = customId.split(":");
         const buttonId = parts[2];
         const optionId = parts[3];
-        await interaction.update(renderQuestionsMenu(guildId, userId, buttonId, true, optionId));
+        await interaction.update(await renderQuestionsMenu(guildId, userId, buttonId, true, optionId));
         return;
       }
 
@@ -1208,22 +1209,22 @@ const componentHandlers = [
         const buttonId = parts[2];
         const optionId = parts[3];
         const idx = parseInt(interaction.values[0], 10);
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
         const option = button?.hiddenSelectMenu?.options?.find((o) => o.id === optionId);
 
         if (option && option.questions) {
           option.questions.splice(idx, 1);
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
-        await interaction.update(renderQuestionsMenu(guildId, userId, buttonId, true, optionId));
+        await interaction.update(await renderQuestionsMenu(guildId, userId, buttonId, true, optionId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:sel_preview:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (!button) return;
@@ -1232,7 +1233,7 @@ const componentHandlers = [
         if (options.length === 0) {
           await interaction.reply({
             content: "⚠️ You have no options configured for this select menu yet. Please add options first.",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
           return;
         }
@@ -1266,7 +1267,7 @@ const componentHandlers = [
       }
 
       if (customId === "ticketpanel:embed_edit_req") {
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const emb = config.embedSettings;
 
         const modal = new ModalBuilder()
@@ -1296,7 +1297,7 @@ const componentHandlers = [
       }
 
       if (customId === "ticketpanel:embed_preview") {
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const emb = config.embedSettings;
 
         const previewEmbed = new EmbedBuilder()
@@ -1342,25 +1343,25 @@ const componentHandlers = [
       }
 
       if (customId === "ticketpanel:main:embed") {
-        await interaction.update(renderEmbedSettingsMenu(guildId));
+        await interaction.update(await renderEmbedSettingsMenu(guildId));
         return;
       }
 
       if (customId === "ticketpanel:msg_btn_select") {
         const buttonId = interaction.values[0];
-        await interaction.update(renderButtonTicketMessagesMenu(guildId, userId, buttonId));
+        await interaction.update(await renderButtonTicketMessagesMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:msg_menu:")) {
         const buttonId = customId.split(":")[2];
-        await interaction.update(renderButtonTicketMessagesMenu(guildId, userId, buttonId));
+        await interaction.update(await renderButtonTicketMessagesMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:msg_edit_welcome:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const msgConfig = config.ticketMessages[buttonId] || {};
 
         const modal = new ModalBuilder()
@@ -1384,7 +1385,7 @@ const componentHandlers = [
 
       if (customId.startsWith("ticketpanel:msg_edit_embed:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const msgConfig = config.ticketMessages[buttonId] || {};
         const emb = msgConfig.embed || {};
 
@@ -1416,7 +1417,7 @@ const componentHandlers = [
 
       if (customId.startsWith("ticketpanel:msg_edit_support_role:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const msgConfig = config.ticketMessages[buttonId] || {};
 
         const modal = new ModalBuilder()
@@ -1440,7 +1441,7 @@ const componentHandlers = [
 
       if (customId.startsWith("ticketpanel:msg_toggle_rename:")) {
         const buttonId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.ticketMessages[buttonId] = config.ticketMessages[buttonId] || {
           welcomeMessage: "Welcome to your ticket! A staff member will be with you shortly.",
           embed: { title: "Ticket Support", description: "Please explain your issue in detail.", color: "#5865F2" },
@@ -1449,15 +1450,15 @@ const componentHandlers = [
           insideButtons: []
         };
         config.ticketMessages[buttonId].renameOnClaim = !config.ticketMessages[buttonId].renameOnClaim;
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
-        await interaction.update(renderButtonTicketMessagesMenu(guildId, userId, buttonId));
+        await interaction.update(await renderButtonTicketMessagesMenu(guildId, userId, buttonId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:msg_buttons_menu:")) {
         const buttonId = customId.split(":")[2];
-        await interaction.update(renderInTicketButtonsMenu(guildId, userId, buttonId));
+        await interaction.update(await renderInTicketButtonsMenu(guildId, userId, buttonId));
         return;
       }
 
@@ -1492,22 +1493,22 @@ const componentHandlers = [
       if (customId.startsWith("ticketpanel:msg_btn_configure_select:")) {
         const buttonId = customId.split(":")[2];
         const inBtnId = interaction.values[0];
-        await interaction.update(renderInTicketButtonConfigMenu(guildId, userId, buttonId, inBtnId));
+        await interaction.update(await renderInTicketButtonConfigMenu(guildId, userId, buttonId, inBtnId));
         return;
       }
 
       if (customId.startsWith("ticketpanel:msg_btn_delete_select:")) {
         const buttonId = customId.split(":")[2];
         const inBtnId = interaction.values[0];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const msgConfig = config.ticketMessages[buttonId];
 
         if (msgConfig && msgConfig.insideButtons) {
           msgConfig.insideButtons = msgConfig.insideButtons.filter((b) => b.id !== inBtnId);
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
-        await interaction.update(renderInTicketButtonsMenu(guildId, userId, buttonId));
+        await interaction.update(await renderInTicketButtonsMenu(guildId, userId, buttonId));
         return;
       }
 
@@ -1515,7 +1516,7 @@ const componentHandlers = [
         const parts = customId.split(":");
         const buttonId = parts[2];
         const inBtnId = parts[3];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const insideBtn = config.ticketMessages[buttonId]?.insideButtons?.find((b) => b.id === inBtnId);
 
         if (!insideBtn) return;
@@ -1576,20 +1577,20 @@ const componentHandlers = [
         const buttonId = parts[2];
         const inBtnId = parts[3];
         const optIdx = parseInt(interaction.values[0], 10);
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const insideBtn = config.ticketMessages[buttonId]?.insideButtons?.find((b) => b.id === inBtnId);
 
         if (insideBtn && insideBtn.selectOptions) {
           insideBtn.selectOptions.splice(optIdx, 1);
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
-        await interaction.update(renderInTicketButtonConfigMenu(guildId, userId, buttonId, inBtnId));
+        await interaction.update(await renderInTicketButtonConfigMenu(guildId, userId, buttonId, inBtnId));
         return;
       }
 
       if (customId === "ticketpanel:gen_edit_limits") {
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const gen = config.general;
 
         const modal = new ModalBuilder()
@@ -1614,49 +1615,49 @@ const componentHandlers = [
 
       if (customId === "ticketpanel:gen_logs_select") {
         const channelId = interaction.values[0];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.general.logsChannel = channelId;
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
-        await interaction.update(renderGeneralSettingsMenu(guildId));
+        await interaction.update(await renderGeneralSettingsMenu(guildId));
         return;
       }
 
       if (customId === "ticketpanel:gen_toggle_transcript") {
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.general.transcriptEnabled = !config.general.transcriptEnabled;
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
-        await interaction.update(renderGeneralSettingsMenu(guildId));
+        await interaction.update(await renderGeneralSettingsMenu(guildId));
         return;
       }
 
       if (customId === "ticketpanel:gen_toggle_reason") {
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.general.closeReasonPrompt = !config.general.closeReasonPrompt;
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
-        await interaction.update(renderGeneralSettingsMenu(guildId));
+        await interaction.update(await renderGeneralSettingsMenu(guildId));
         return;
       }
 
       if (customId === "ticketpanel:gen_toggle_confirm") {
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.general.confirmOnClose = !config.general.confirmOnClose;
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
-        await interaction.update(renderGeneralSettingsMenu(guildId));
+        await interaction.update(await renderGeneralSettingsMenu(guildId));
         return;
       }
 
       if (customId === "ticketpanel:send_channel_select") {
         const channelId = interaction.values[0];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
 
         if (config.buttons.length === 0) {
           await interaction.reply({
             content: "❌ You cannot publish the panel with 0 buttons configured. Please add buttons first.",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
           return;
         }
@@ -1681,7 +1682,7 @@ const componentHandlers = [
 
       if (customId.startsWith("ticketpanel:send_confirm:")) {
         const channelId = customId.split(":")[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const channel = interaction.guild.channels.cache.get(channelId);
 
         if (!channel) {
@@ -1868,7 +1869,7 @@ const modalHandlers = [
         if (!isAdmin(interaction)) {
           await interaction.reply({
             content: "❌ You don't have permission to perform this configuration.",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
           return;
         }
@@ -1881,7 +1882,7 @@ const modalHandlers = [
         const categoryId = interaction.fields.getTextInputValue("category").trim() || null;
         const channelNameFormat = interaction.fields.getTextInputValue("format").trim() || "ticket-{username}";
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const buttonId = generateId();
 
         config.buttons.push({
@@ -1914,11 +1915,11 @@ const modalHandlers = [
           insideButtons: [],
         };
 
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
         await interaction.reply({
           content: `✅ Button **${label}** added successfully!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -1931,7 +1932,7 @@ const modalHandlers = [
         const categoryId = interaction.fields.getTextInputValue("category").trim() || null;
         const channelNameFormat = interaction.fields.getTextInputValue("format").trim();
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button) {
@@ -1940,12 +1941,12 @@ const modalHandlers = [
           button.style = ["Primary", "Secondary", "Success", "Danger"].includes(style) ? style : "Primary";
           button.categoryId = categoryId;
           button.channelNameFormat = channelNameFormat;
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
         await interaction.reply({
           content: `✅ Button settings updated!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -1959,19 +1960,19 @@ const modalHandlers = [
         const cooldownSeconds = cooldownStr ? parseInt(cooldownStr, 10) : null;
         const maxTicketsForThisButton = maxTicketsStr ? parseInt(maxTicketsStr, 10) : null;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button) {
           button.requiredRole = requiredRole;
           button.cooldownSeconds = isNaN(cooldownSeconds) ? null : cooldownSeconds;
           button.maxTicketsForThisButton = isNaN(maxTicketsForThisButton) ? null : maxTicketsForThisButton;
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
         await interaction.reply({
           content: `✅ Conditions updated!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -1980,17 +1981,17 @@ const modalHandlers = [
         const buttonId = customId.split(":")[2];
         const supportRole = interaction.fields.getTextInputValue("supportRole").trim() || null;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button) {
           button.supportRole = supportRole;
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
         await interaction.reply({
           content: `✅ Support role configured!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2001,18 +2002,18 @@ const modalHandlers = [
         const type = interaction.fields.getTextInputValue("type").trim().toLowerCase() === "paragraph" ? "paragraph" : "short";
         const required = ["no", "false"].includes(interaction.fields.getTextInputValue("required").trim().toLowerCase()) ? false : true;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button) {
           button.questions = button.questions || [];
           button.questions.push({ question, type, required });
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
         await interaction.reply({
           content: `✅ Question added!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2024,7 +2025,7 @@ const modalHandlers = [
         const emoji = interaction.fields.getTextInputValue("emoji").trim() || null;
         const categoryId = interaction.fields.getTextInputValue("category").trim() || null;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
 
         if (button) {
@@ -2037,12 +2038,12 @@ const modalHandlers = [
             categoryId,
             questions: [],
           });
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
         await interaction.reply({
           content: `✅ Option **${label}** added successfully!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2056,7 +2057,7 @@ const modalHandlers = [
         const emoji = interaction.fields.getTextInputValue("emoji").trim() || null;
         const categoryId = interaction.fields.getTextInputValue("category").trim() || null;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
         const option = button?.hiddenSelectMenu?.options?.find((o) => o.id === optionId);
 
@@ -2065,12 +2066,12 @@ const modalHandlers = [
           option.description = description;
           option.emoji = emoji;
           option.categoryId = categoryId;
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
         await interaction.reply({
           content: `✅ Option settings updated!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2083,19 +2084,19 @@ const modalHandlers = [
         const type = interaction.fields.getTextInputValue("type").trim().toLowerCase() === "paragraph" ? "paragraph" : "short";
         const required = ["no", "false"].includes(interaction.fields.getTextInputValue("required").trim().toLowerCase()) ? false : true;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
         const option = button?.hiddenSelectMenu?.options?.find((o) => o.id === optionId);
 
         if (option) {
           option.questions = option.questions || [];
           option.questions.push({ question, type, required });
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
         await interaction.reply({
           content: `✅ Option question added!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2107,13 +2108,13 @@ const modalHandlers = [
         const image = interaction.fields.getTextInputValue("image").trim() || null;
         const footer = interaction.fields.getTextInputValue("footer").trim() || null;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.embedSettings = { title, description, color, image, footer };
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
         await interaction.reply({
           content: `✅ Panel Embed details updated!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2122,14 +2123,14 @@ const modalHandlers = [
         const buttonId = customId.split(":")[2];
         const welcomeMessage = interaction.fields.getTextInputValue("welcomeMessage").trim();
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.ticketMessages[buttonId] = config.ticketMessages[buttonId] || {};
         config.ticketMessages[buttonId].welcomeMessage = welcomeMessage;
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
         await interaction.reply({
           content: `✅ Welcome Message updated!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2142,14 +2143,14 @@ const modalHandlers = [
         const image = interaction.fields.getTextInputValue("image").trim() || null;
         const footer = interaction.fields.getTextInputValue("footer").trim() || null;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.ticketMessages[buttonId] = config.ticketMessages[buttonId] || {};
         config.ticketMessages[buttonId].embed = { title, description, color, image, footer };
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
         await interaction.reply({
           content: `✅ In-Ticket Embed updated!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2158,14 +2159,14 @@ const modalHandlers = [
         const buttonId = customId.split(":")[2];
         const supportRole = interaction.fields.getTextInputValue("supportRole").trim() || null;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.ticketMessages[buttonId] = config.ticketMessages[buttonId] || {};
         config.ticketMessages[buttonId].supportRole = supportRole;
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
         await interaction.reply({
           content: `✅ In-Ticket linked support role configured!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2178,7 +2179,7 @@ const modalHandlers = [
         const actionType = interaction.fields.getTextInputValue("actionType").trim().toLowerCase() === "selectmenu" ? "selectMenu" : "direct";
         const action = interaction.fields.getTextInputValue("action").trim();
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.ticketMessages[buttonId] = config.ticketMessages[buttonId] || {};
         config.ticketMessages[buttonId].insideButtons = config.ticketMessages[buttonId].insideButtons || [];
 
@@ -2192,11 +2193,11 @@ const modalHandlers = [
           selectOptions: [],
         });
 
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
         await interaction.reply({
           content: `✅ In-Ticket button added!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2210,7 +2211,7 @@ const modalHandlers = [
         const style = interaction.fields.getTextInputValue("style").trim();
         const action = interaction.fields.getTextInputValue("action").trim();
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const insideBtn = config.ticketMessages[buttonId]?.insideButtons?.find((b) => b.id === inBtnId);
 
         if (insideBtn) {
@@ -2218,12 +2219,12 @@ const modalHandlers = [
           insideBtn.emoji = emoji;
           insideBtn.style = ["Primary", "Secondary", "Success", "Danger"].includes(style) ? style : "Primary";
           insideBtn.action = ["close", "claim", "addMember", "notify", "transcript"].includes(action) ? action : "close";
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
         await interaction.reply({
           content: `✅ In-Ticket button settings updated!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2237,7 +2238,7 @@ const modalHandlers = [
         const emoji = interaction.fields.getTextInputValue("emoji").trim() || null;
         const action = interaction.fields.getTextInputValue("action").trim();
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const insideBtn = config.ticketMessages[buttonId]?.insideButtons?.find((b) => b.id === inBtnId);
 
         if (insideBtn) {
@@ -2248,12 +2249,12 @@ const modalHandlers = [
             emoji,
             action: ["close", "claim", "addMember", "notify", "transcript"].includes(action) ? action : "close",
           });
-          db.saveGuildConfig(guildId, config);
+          await db.saveGuildConfig(guildId, config);
         }
 
         await interaction.reply({
           content: `✅ Dropdown option added!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -2266,23 +2267,23 @@ const modalHandlers = [
         const globalLimit = globalLimitStr ? parseInt(globalLimitStr, 10) : null;
         const autoCloseHours = autoCloseStr ? parseInt(autoCloseStr, 10) : null;
 
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         config.general.maxTicketsPerUser = isNaN(maxTickets) ? 3 : maxTickets;
         config.general.globalLimit = isNaN(globalLimit) ? null : globalLimit;
         config.general.autoCloseHours = isNaN(autoCloseHours) ? null : autoCloseHours;
 
-        db.saveGuildConfig(guildId, config);
+        await db.saveGuildConfig(guildId, config);
 
         await interaction.reply({
           content: `✅ General server limits updated!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
       if (customId.startsWith("ticket_modal_submit:")) {
         const buttonId = customId.split(":")[1];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
         if (!button) return;
 
@@ -2300,7 +2301,7 @@ const modalHandlers = [
         const parts = customId.split(":");
         const buttonId = parts[1];
         const optId = parts[2];
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         const button = config.buttons.find((b) => b.id === buttonId);
         const option = button?.hiddenSelectMenu?.options?.find((o) => o.id === optId);
         if (!option) return;
@@ -2326,7 +2327,7 @@ const modalHandlers = [
         try {
           const member = await interaction.guild.members.fetch(targetUserId);
           if (!member) {
-            await interaction.reply({ content: "❌ Member not found in this server.", ephemeral: true });
+            await interaction.reply({ content: "❌ Member not found in this server.", flags: MessageFlags.Ephemeral });
             return;
           }
 
@@ -2342,7 +2343,7 @@ const modalHandlers = [
         } catch (err) {
           await interaction.reply({
             content: `❌ Failed to add member. Make sure ID is correct. Details: ${err.message}`,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
         return;
@@ -2354,11 +2355,11 @@ const modalHandlers = [
 async function handleTicketOpenRequest(interaction, buttonId, optionId) {
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
-  const config = db.getGuildConfig(guildId);
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === buttonId);
 
   if (!button) {
-    await interaction.reply({ content: "❌ This button configuration was not found.", ephemeral: true });
+    await interaction.reply({ content: "❌ This button configuration was not found.", flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -2369,7 +2370,7 @@ async function handleTicketOpenRequest(interaction, buttonId, optionId) {
       const remaining = Math.ceil((expires - Date.now()) / 1000);
       await interaction.reply({
         content: `❌ You are on cooldown for this button! Please wait **${remaining}** more seconds.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -2379,7 +2380,7 @@ async function handleTicketOpenRequest(interaction, buttonId, optionId) {
     if (!interaction.member.roles.cache.has(button.requiredRole)) {
       await interaction.reply({
         content: `❌ You must have the <@&${button.requiredRole}> role to use this button.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -2389,7 +2390,7 @@ async function handleTicketOpenRequest(interaction, buttonId, optionId) {
   if (openTickets.length >= config.general.maxTicketsPerUser) {
     await interaction.reply({
       content: `❌ You have reached the limit of open tickets per user (\`${config.general.maxTicketsPerUser}\`).`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -2399,7 +2400,7 @@ async function handleTicketOpenRequest(interaction, buttonId, optionId) {
     if (buttonOpenTickets.length >= button.maxTicketsForThisButton) {
       await interaction.reply({
         content: `❌ You have reached the ticket limit specifically for this button (\`${button.maxTicketsForThisButton}\`).`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -2410,7 +2411,7 @@ async function handleTicketOpenRequest(interaction, buttonId, optionId) {
     if (allOpenTickets.length >= config.general.globalLimit) {
       await interaction.reply({
         content: "❌ The support desk is currently full. Please try again later.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -2421,7 +2422,7 @@ async function handleTicketOpenRequest(interaction, buttonId, optionId) {
     if (options.length === 0) {
       await interaction.reply({
         content: "⚠️ The select menu configuration is empty. Contact staff.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -2441,7 +2442,7 @@ async function handleTicketOpenRequest(interaction, buttonId, optionId) {
     await interaction.reply({
       content: "📋 Please select an option from the menu below to open your ticket:",
       components: [new ActionRowBuilder().addComponents(select)],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -2465,9 +2466,9 @@ async function handleTicketOpenRequest(interaction, buttonId, optionId) {
       .setColor("#E67E22");
 
     if (interaction.deferred || interaction.replied) {
-      await interaction.followUp({ content: "", embeds: [embed], components: [row], ephemeral: true });
+      await interaction.followUp({ content: "", embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
     } else {
-      await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+      await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
     }
     return;
   }
@@ -2477,7 +2478,7 @@ async function handleTicketOpenRequest(interaction, buttonId, optionId) {
 
 async function handleTicketOpenFlow(interaction, buttonId, optionId) {
   const guildId = interaction.guildId;
-  const config = db.getGuildConfig(guildId);
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === buttonId);
   const option = optionId ? button?.hiddenSelectMenu?.options?.find((o) => o.id === optionId) : null;
 
@@ -2511,12 +2512,12 @@ async function handleTicketOpenFlow(interaction, buttonId, optionId) {
 }
 
 async function handleTicketCreation(interaction, button, option, answers) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const guild = interaction.guild;
   const user = interaction.user;
   const guildId = guild.id;
-  const config = db.getGuildConfig(guildId);
+  const config = await db.getGuildConfig(guildId);
 
   if (button.cooldownSeconds) {
     const cdKey = `${user.id}-${button.id}`;
@@ -2594,7 +2595,7 @@ async function handleTicketCreation(interaction, button, option, answers) {
       lastActivity: Date.now(),
       answers: answers || [],
     };
-    db.addActiveTicket(guildId, ticketData);
+    await db.addActiveTicket(guildId, ticketData);
 
     const welcomeText = msgConfig.welcomeMessage
       ? msgConfig.welcomeMessage.replace("{user}", `<@${user.id}>`)
@@ -2710,20 +2711,20 @@ async function handleTicketClaim(interaction) {
   const guildId = interaction.guildId;
   const channel = interaction.channel;
   const user = interaction.user;
-  const ticket = db.getActiveTicket(guildId, channel.id);
+  const ticket = await db.getActiveTicket(guildId, channel.id);
 
   if (!ticket) {
-    await interaction.reply({ content: "❌ Ticket data not found in DB.", ephemeral: true });
+    await interaction.reply({ content: "❌ Ticket data not found in DB.", flags: MessageFlags.Ephemeral });
     return;
   }
 
   if (ticket.claimedBy) {
-    await interaction.reply({ content: `❌ This ticket is already claimed by <@${ticket.claimedBy}>.`, ephemeral: true });
+    await interaction.reply({ content: `❌ This ticket is already claimed by <@${ticket.claimedBy}>.`, flags: MessageFlags.Ephemeral });
     return;
   }
 
-  db.updateActiveTicket(guildId, channel.id, { claimedBy: user.id, lastActivity: Date.now() });
-  db.incrementClaimCount(guildId, user.id);
+  await db.updateActiveTicket(guildId, channel.id, { claimedBy: user.id, lastActivity: Date.now() });
+  await db.incrementClaimCount(guildId, user.id);
 
   try {
     const rows = interaction.message.components.map((row) => {
@@ -2745,7 +2746,7 @@ async function handleTicketClaim(interaction) {
 
   await channel.send({ content: `🙋‍♂️ **This ticket is now claimed by ${user}!**` });
 
-  const config = db.getGuildConfig(guildId);
+  const config = await db.getGuildConfig(guildId);
   const button = config.buttons.find((b) => b.id === ticket.buttonId);
   const msgConfig = config.ticketMessages[button?.id] || {};
 
@@ -2760,7 +2761,7 @@ async function handleTicketClaim(interaction) {
 
 async function handleTicketCloseRequest(interaction) {
   const guildId = interaction.guildId;
-  const config = db.getGuildConfig(guildId);
+  const config = await db.getGuildConfig(guildId);
 
   if (config.general.confirmOnClose) {
     const confirmBtn = new ButtonBuilder()
@@ -2784,7 +2785,7 @@ async function handleTicketCloseRequest(interaction) {
 
 async function handleTicketCloseConfirm(interaction) {
   const guildId = interaction.guildId;
-  const config = db.getGuildConfig(guildId);
+  const config = await db.getGuildConfig(guildId);
 
   if (config.general.closeReasonPrompt) {
     const modal = new ModalBuilder()
@@ -2813,8 +2814,8 @@ async function executeTicketClose(interaction, reason) {
   const guildId = interaction.guildId;
   const channel = interaction.channel;
   const closer = interaction.user;
-  const config = db.getGuildConfig(guildId);
-  const ticket = db.getActiveTicket(guildId, channel.id);
+  const config = await db.getGuildConfig(guildId);
+  const ticket = await db.getActiveTicket(guildId, channel.id);
 
   if (!ticket) {
     const errObj = { content: "❌ Ticket information not found in DB." };
@@ -2823,7 +2824,7 @@ async function executeTicketClose(interaction, reason) {
     return;
   }
 
-  db.updateActiveTicket(guildId, channel.id, { status: "closed", lastActivity: Date.now() });
+  await db.updateActiveTicket(guildId, channel.id, { status: "closed", lastActivity: Date.now() });
 
   try {
     await channel.permissionOverwrites.edit(ticket.userId, {
@@ -2938,7 +2939,7 @@ async function handleTicketDelete(interaction) {
 
   setTimeout(async () => {
     try {
-      db.removeActiveTicket(guildId, channel.id);
+      await db.removeActiveTicket(guildId, channel.id);
       await channel.delete("Ticket Deleted by staff.");
     } catch (err) {
       console.error("Failed to delete channel:", err);
@@ -2949,10 +2950,10 @@ async function handleTicketDelete(interaction) {
 async function handleTicketTranscriptExport(interaction) {
   const guildId = interaction.guildId;
   const channel = interaction.channel;
-  const ticket = db.getActiveTicket(guildId, channel.id);
+  const ticket = await db.getActiveTicket(guildId, channel.id);
 
   if (!ticket) {
-    await interaction.reply({ content: "❌ Ticket information not found in DB.", ephemeral: true });
+    await interaction.reply({ content: "❌ Ticket information not found in DB.", flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -2971,10 +2972,10 @@ async function handleTicketTranscriptExport(interaction) {
 async function handleTicketTranscriptInline(interaction) {
   const guildId = interaction.guildId;
   const channel = interaction.channel;
-  const ticket = db.getActiveTicket(guildId, channel.id);
+  const ticket = await db.getActiveTicket(guildId, channel.id);
 
   if (!ticket) {
-    await interaction.reply({ content: "❌ Ticket data not found in DB.", ephemeral: true });
+    await interaction.reply({ content: "❌ Ticket data not found in DB.", flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -2993,10 +2994,10 @@ async function handleTicketTranscriptInline(interaction) {
 async function handleTicketNotify(interaction) {
   const guildId = interaction.guildId;
   const channel = interaction.channel;
-  const ticket = db.getActiveTicket(guildId, channel.id);
+  const ticket = await db.getActiveTicket(guildId, channel.id);
 
   if (!ticket) {
-    await interaction.reply({ content: "❌ Ticket data not found.", ephemeral: true });
+    await interaction.reply({ content: "❌ Ticket data not found.", flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -3068,7 +3069,7 @@ function init(client) {
     try {
       const guilds = client.guilds.cache;
       for (const [guildId, guild] of guilds) {
-        const config = db.getGuildConfig(guildId);
+        const config = await db.getGuildConfig(guildId);
         if (!config.general || !config.general.autoCloseHours) continue;
 
         const autoCloseMs = config.general.autoCloseHours * 60 * 60 * 1000;
@@ -3078,7 +3079,7 @@ function init(client) {
           const channel = guild.channels.cache.get(ticket.channelId);
           if (!channel) {
 
-            db.removeActiveTicket(guildId, ticket.channelId);
+            await db.removeActiveTicket(guildId, ticket.channelId);
             continue;
           }
 
@@ -3096,7 +3097,7 @@ function init(client) {
 
             console.log(`Auto-closing ticket channel ${channel.id} due to inactivity.`);
 
-            db.updateActiveTicket(guildId, ticket.channelId, { status: "closed", lastActivity: Date.now() });
+            await db.updateActiveTicket(guildId, ticket.channelId, { status: "closed", lastActivity: Date.now() });
 
             try {
               await channel.permissionOverwrites.edit(ticket.userId, {

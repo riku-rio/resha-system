@@ -9,9 +9,68 @@ datasource db {
   provider = "sqlite"
 }
 
+// ─── AutoReply ────────────────────────────────────────────────────────────────
 model AutoReply {
-  id             Int      @id @default(autoincrement())
-  triggerMessage String   @unique
-  replyContent   String
-  createdAt      DateTime @default(now())
+  id              Int      @id @default(autoincrement())
+  guildId         String
+  triggerMessage  String
+  replyContent    String
+  matchType       String   @default("exact")
+  replyType       String   @default("message")
+  embedTitle      String?
+  embedColor      String?
+  enabled         Boolean  @default(true)
+  allowedChannels String   @default("")
+  deniedChannels  String   @default("")
+  allowedRoles    String   @default("")
+  replyToSender   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([guildId, triggerMessage])
+}
+
+// ─── Ticket System ───────────────────────────────────────────────────────────
+// Stores the full per-guild ticket panel config as JSON strings
+model GuildTicketConfig {
+  guildId        String   @id
+  buttons        String   @default("[]")        // JSON: Button[]
+  ticketMessages String   @default("{}")        // JSON: Record<buttonId, MsgConfig>
+  embedSettings  String   @default("{}")        // JSON: EmbedSettings
+  general        String   @default("{}")        // JSON: GeneralSettings
+  activeTickets  String   @default("[]")        // JSON: ActiveTicket[]
+  claimStats     String   @default("{}")        // JSON: Record<userId, number>
+  updatedAt      DateTime @updatedAt
+}
+
+// ─── Reviews System ──────────────────────────────────────────────────────────
+model GuildReviewConfig {
+  guildId        String  @id
+  reviewsChannel String?
+  reviewRole     String?
+  minDelaySeconds Int    @default(0)
+}
+
+model Review {
+  id                Int      @id @default(autoincrement())
+  guildId           String
+  raterId           String
+  ratedId           String
+  stars             Int
+  comment           String   @default("")
+  ticketChannelName String?
+  source            String   @default("auto")
+  createdAt         DateTime @default(now())
+}
+
+// ─── Logging System ──────────────────────────────────────────────────────────
+model GuildLogConfig {
+  guildId              String  @id
+  enabled              Boolean @default(false)
+  autoCreate           Boolean @default(false)
+  channelMessageDelete String?
+  channelMessageEdit   String?
+  channelMemberJoin    String?
+  channelMemberLeave   String?
+  channelTicket        String?
 }

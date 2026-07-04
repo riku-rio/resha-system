@@ -1,129 +1,133 @@
-const fs = require("fs");
-const path = require("path");
+const prisma = require("../config/database");
 
-const dbPath = path.resolve(__dirname, "../../data/ticket_db.json");
+const DEFAULT_EMBED = {
+  title: "🎫 Support Tickets",
+  description: "Click one of the buttons below to open a support ticket.",
+  color: "#5865F2",
+  image: null,
+  footer: null
+};
 
-function ensureDbExists() {
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+const DEFAULT_GENERAL = {
+  maxTicketsPerUser: 3,
+  globalLimit: null,
+  logsChannel: null,
+  transcriptEnabled: true,
+  autoCloseHours: null,
+  closeReasonPrompt: true,
+  confirmOnClose: true
+};
+
+/**
+ * Gets (or creates) the full config object for a guild.
+ * Returns a plain JS object matching the old JSON shape.
+ */
+async function getGuildConfig(guildId) {
+  let row = await prisma.guildTicketConfig.findUnique({ where: { guildId } });
+
+  if (!row) {
+    row = await prisma.guildTicketConfig.create({
+      data: {
+        guildId,
+        buttons: JSON.stringify([]),
+        ticketMessages: JSON.stringify({}),
+        embedSettings: JSON.stringify(DEFAULT_EMBED),
+        general: JSON.stringify(DEFAULT_GENERAL),
+        activeTickets: JSON.stringify([]),
+        claimStats: JSON.stringify({})
+      }
+    });
   }
-  if (!fs.existsSync(dbPath)) {
-    fs.writeFileSync(dbPath, JSON.stringify({}, null, 2), "utf8");
-  }
+
+  return {
+    buttons: JSON.parse(row.buttons),
+    ticketMessages: JSON.parse(row.ticketMessages),
+    embedSettings: JSON.parse(row.embedSettings),
+    general: JSON.parse(row.general),
+    activeTickets: JSON.parse(row.activeTickets),
+    claimStats: JSON.parse(row.claimStats)
+  };
 }
 
-function readData() {
-  ensureDbExists();
-  try {
-    const content = fs.readFileSync(dbPath, "utf8");
-    return JSON.parse(content || "{}");
-  } catch (error) {
-    console.error("Failed to read ticket database:", error);
-    return {};
-  }
+/**
+ * Saves the full config object for a guild.
+ * @param {string} guildId
+ * @param {object} config  - same shape returned by getGuildConfig
+ */
+async function saveGuildConfig(guildId, config) {
+  await prisma.guildTicketConfig.upsert({
+    where: { guildId },
+    update: {
+      buttons: JSON.stringify(config.buttons ?? []),
+      ticketMessages: JSON.stringify(config.ticketMessages ?? {}),
+      embedSettings: JSON.stringify(config.embedSettings ?? DEFAULT_EMBED),
+      general: JSON.stringify(config.general ?? DEFAULT_GENERAL),
+      activeTickets: JSON.stringify(config.activeTickets ?? []),
+      claimStats: JSON.stringify(config.claimStats ?? {})
+    },
+    create: {
+      guildId,
+      buttons: JSON.stringify(config.buttons ?? []),
+      ticketMessages: JSON.stringify(config.ticketMessages ?? {}),
+      embedSettings: JSON.stringify(config.embedSettings ?? DEFAULT_EMBED),
+      general: JSON.stringify(config.general ?? DEFAULT_GENERAL),
+      activeTickets: JSON.stringify(config.activeTickets ?? []),
+      claimStats: JSON.stringify(config.claimStats ?? {})
+    }
+  });
 }
 
-function writeData(data) {
-  ensureDbExists();
-  try {
-    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf8");
-  } catch (error) {
-    console.error("Failed to write to ticket database:", error);
-  }
-}
-
-function getGuildConfig(guildId) {
-  const data = readData();
-  if (!data[guildId]) {
-    data[guildId] = {
-      buttons: [],
-      ticketMessages: {},
-      embedSettings: {
-        title: "🎫 Support Tickets",
-        description: "Click one of the buttons below to open a support ticket.",
-        color: "#5865F2",
-        image: null,
-        footer: null
-      },
-      general: {
-        maxTicketsPerUser: 3,
-        globalLimit: null,
-        logsChannel: null,
-        transcriptEnabled: true,
-        autoCloseHours: null,
-        closeReasonPrompt: true,
-        confirmOnClose: true
-      },
-      activeTickets: [], // Track active tickets
-      claimStats: {} // Track claimed ticket counts per staff member
-    };
-    writeData(data);
-  }
-  if (!data[guildId].claimStats) {
-    data[guildId].claimStats = {};
-    writeData(data);
-  }
-  return data[guildId];
-}
-
-function saveGuildConfig(guildId, config) {
-  const data = readData();
-  data[guildId] = config;
-  writeData(data);
-}
-
-function addActiveTicket(guildId, ticket) {
-  const config = getGuildConfig(guildId);
+async function addActiveTicket(guildId, ticket) {
+  const config = await getGuildConfig(guildId);
   config.activeTickets = config.activeTickets || [];
   config.activeTickets.push(ticket);
-  saveGuildConfig(guildId, config);
+  await saveGuildConfig(guildId, config);
 }
 
-function getActiveTicket(guildId, channelId) {
-  const config = getGuildConfig(guildId);
+async function getActiveTicket(guildId, channelId) {
+  const config = await getGuildConfig(guildId);
   config.activeTickets = config.activeTickets || [];
-  return config.activeTickets.find(t => t.channelId === channelId) || null;
+  return config.activeTickets.find((t) => t.channelId === channelId) || null;
 }
 
-function updateActiveTicket(guildId, channelId, updates) {
-  const config = getGuildConfig(guildId);
+async function updateActiveTicket(guildId, channelId, updates) {
+  const config = await getGuildConfig(guildId);
   config.activeTickets = config.activeTickets || [];
-  const index = config.activeTickets.findIndex(t => t.channelId === channelId);
+  const index = config.activeTickets.findIndex((t) => t.channelId === channelId);
   if (index !== -1) {
     config.activeTickets[index] = { ...config.activeTickets[index], ...updates };
-    saveGuildConfig(guildId, config);
+    await saveGuildConfig(guildId, config);
   }
 }
 
-function removeActiveTicket(guildId, channelId) {
-  const config = getGuildConfig(guildId);
+async function removeActiveTicket(guildId, channelId) {
+  const config = await getGuildConfig(guildId);
   config.activeTickets = config.activeTickets || [];
-  config.activeTickets = config.activeTickets.filter(t => t.channelId !== channelId);
-  saveGuildConfig(guildId, config);
+  config.activeTickets = config.activeTickets.filter((t) => t.channelId !== channelId);
+  await saveGuildConfig(guildId, config);
 }
 
-function incrementClaimCount(guildId, userId) {
-  const config = getGuildConfig(guildId);
+async function incrementClaimCount(guildId, userId) {
+  const config = await getGuildConfig(guildId);
   config.claimStats = config.claimStats || {};
   config.claimStats[userId] = (config.claimStats[userId] || 0) + 1;
-  saveGuildConfig(guildId, config);
+  await saveGuildConfig(guildId, config);
 }
 
-function getClaimStats(guildId) {
-  const config = getGuildConfig(guildId);
+async function getClaimStats(guildId) {
+  const config = await getGuildConfig(guildId);
   return config.claimStats || {};
 }
 
-function resetClaimStats(guildId, userId) {
-  const config = getGuildConfig(guildId);
+async function resetClaimStats(guildId, userId) {
+  const config = await getGuildConfig(guildId);
   config.claimStats = config.claimStats || {};
   if (userId) {
     config.claimStats[userId] = 0;
   } else {
     config.claimStats = {};
   }
-  saveGuildConfig(guildId, config);
+  await saveGuildConfig(guildId, config);
 }
 
 module.exports = {
