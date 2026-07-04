@@ -1,0 +1,1 @@
+{"scripts":{"start":"node index.js"},"dependencies":{"@prisma/adapter-better-sqlite3":"^7.8.0","@prisma/client":"^7.8.0","better-sqlite3":"^12.11.1","discord.js":"^14.26.4","dotenv":"^17.4.2"},"devDependencies":{"prisma":"^7.8.0"}}

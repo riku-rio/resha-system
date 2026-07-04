@@ -1,0 +1,12 @@
+{
+  "1514327810225868992": {
+    "enabled": true,
+    "autoCreate": true,
+    "channels": {
+      "messageDelete": "1522852593184018524",
+      "messageEdit": "1522852594693705748",
+      "memberJoin": "1522852596476416031",
+      "memberLeave": "1522852598200406176"
+    }
+  }
+}

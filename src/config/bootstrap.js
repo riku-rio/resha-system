@@ -20,25 +20,39 @@ async function syncCommands({ token, clientId, guildId }, commands) {
   const rest = new REST({ version: "10" }).setToken(token);
   const body = commands.map((command) => command.data.toJSON());
 
-  if (guildId) {
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body });
-    console.log(`Synced ${body.length} guild command(s) to ${guildId}.`);
-    return;
-  }
+  try {
+    if (guildId) {
+      await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body });
+      console.log(`Synced ${body.length} guild command(s) to ${guildId}.`);
+      return;
+    }
 
-  await rest.put(Routes.applicationCommands(clientId), { body });
-  console.log(`Synced ${body.length} global command(s).`);
+    await rest.put(Routes.applicationCommands(clientId), { body });
+    console.log(`Synced ${body.length} global command(s).`);
+  } catch (error) {
+    console.error("Failed to sync commands with Discord API:", error.message);
+    throw error;
+  }
 }
 
 async function bootstrap() {
   try {
     const env = loadEnv();
 
+    try {
+      const extractedClientId = Buffer.from(env.token.split('.')[0], 'base64').toString('utf-8');
+      if (extractedClientId && /^\d+$/.test(extractedClientId)) {
+        env.clientId = extractedClientId;
+      }
+    } catch (e) {
+    }
+
     const client = new Client({
       intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
       ],
     });
     client.appEnv = env;
@@ -47,7 +61,6 @@ async function bootstrap() {
     client.componentHandlers = [];
     client.modalHandlers = [];
 
-    // Prefix Commands Handler Setup
     client.prefixCommands = new Collection();
     client.aliases = new Collection();
 
@@ -94,9 +107,13 @@ async function bootstrap() {
     }
 
     await syncCommands(env, commands);
+
     await client.login(env.token);
   } catch (error) {
     console.error("Startup failed:", error.message);
+    if (error.stack) {
+      console.error(error.stack);
+    }
     process.exit(1);
   }
 }

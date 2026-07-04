@@ -1,0 +1,21 @@
+{
+  "1514327810225868992": {
+    "config": {
+      "reviewsChannel": "1522375273318715633",
+      "reviewRole": "1514338853820043346",
+      "minDelaySeconds": 0
+    },
+    "reviews": [
+      {
+        "id": 1,
+        "raterId": "575366733616119838",
+        "ratedId": "1363512743667302653",
+        "stars": 5,
+        "comment": "ثقة",
+        "ticketChannelName": "Manual Rate",
+        "source": "manual",
+        "createdAt": "2026-07-04T06:49:43.933Z"
+      }
+    ]
+  }
+}
